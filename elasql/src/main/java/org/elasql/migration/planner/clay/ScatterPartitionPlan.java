@@ -21,6 +21,10 @@ public class ScatterPartitionPlan extends PartitionPlan {
 	public boolean isFullyReplicated(PrimaryKey key) {
 		return basePartition.isFullyReplicated(key);
 	}
+	@Override
+	public void setFullyReplicatedKey(PrimaryKey key) {
+		basePartition.setFullyReplicatedKey(key);
+	}
 
 	@Override
 	public int getPartition(PrimaryKey key) {

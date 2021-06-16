@@ -244,4 +244,8 @@ public class PaymentProc extends TPartStoredProcedure<PaymentProcParamHelper> {
 	public double getWeight() {
 		return 7;
 	}
+	@Override
+	public boolean isDoingReplication() {
+		return false;
+	}
 }

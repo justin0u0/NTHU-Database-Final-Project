@@ -52,6 +52,10 @@ public class PartitionMetaMgr {
 		return partPlan.isFullyReplicated(key);
 	}
 	
+	public void setFullyReplicatedKey(PrimaryKey key) {
+		partPlan.setFullyReplicatedKey(key);
+	}
+	
 	/**
 	 * Get the original location (may not be the current location)
 	 * 

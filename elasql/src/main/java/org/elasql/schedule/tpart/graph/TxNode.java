@@ -11,12 +11,18 @@ public class TxNode extends Node {
 	private Set<Edge> writeBackEdges;
 	
 	private TPartStoredProcedureTask txTask;
+	private boolean allowReroute;
 	
-	public TxNode(TPartStoredProcedureTask txTask, int partId) {
+	public TxNode(TPartStoredProcedureTask txTask, int partId, boolean allowReroute) {
 		this.txTask = txTask;
 		readEdges = new HashSet<Edge>();
 		writeBackEdges = new HashSet<Edge>();
 		setPartId(partId);
+		this.allowReroute = allowReroute;
+	}
+	
+	public boolean getAllowReroute() {
+		return allowReroute;
 	}
 
 	public Set<Edge> getReadEdges() {

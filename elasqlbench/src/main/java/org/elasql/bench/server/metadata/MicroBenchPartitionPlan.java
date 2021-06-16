@@ -26,6 +26,9 @@ public class MicroBenchPartitionPlan extends PartitionPlan {
 		}
 	}
 	
+	public void setFullyReplicatedKey(PrimaryKey key) {
+	}
+	
 	public int getPartition(int iid) {
 		return (iid - 1) / ElasqlMicrobenchConstants.NUM_ITEMS_PER_NODE;
 	}

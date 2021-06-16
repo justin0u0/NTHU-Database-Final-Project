@@ -13,6 +13,8 @@ public abstract class PartitionPlan {
 	 * @return if the record is fully replicated
 	 */
 	public abstract boolean isFullyReplicated(PrimaryKey key);
+	
+	public abstract void setFullyReplicatedKey(PrimaryKey key);
 
 	/**
 	 * Query the belonging partition.

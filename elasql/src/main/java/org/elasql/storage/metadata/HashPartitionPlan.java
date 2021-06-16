@@ -1,14 +1,18 @@
 package org.elasql.storage.metadata;
 
+import java.util.HashSet;
+
 import org.elasql.sql.PartitioningKey;
 import org.elasql.sql.PrimaryKey;
 
 public class HashPartitionPlan extends PartitionPlan {
 	
 	private int numOfParts;
+	private HashSet<PrimaryKey> fullyReplicatedKeys;
 	
 	public HashPartitionPlan() {
 		numOfParts = PartitionMetaMgr.NUM_PARTITIONS;
+		fullyReplicatedKeys = new HashSet<PrimaryKey>();
 	}
 	
 	public HashPartitionPlan(int numberOfPartitions) {
@@ -17,7 +21,12 @@ public class HashPartitionPlan extends PartitionPlan {
 
 	@Override
 	public boolean isFullyReplicated(PrimaryKey key) {
-		return false;
+		return fullyReplicatedKeys.contains(key);
+	}
+	
+	@Override
+	public void setFullyReplicatedKey(PrimaryKey key) {
+		fullyReplicatedKeys.add(key);
 	}
 
 	@Override

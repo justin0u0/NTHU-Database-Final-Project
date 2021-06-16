@@ -308,4 +308,9 @@ public class NewOrderProc extends TPartStoredProcedure<NewOrderProcParamHelper> 
 	public double getWeight() {
 		return 6 + paramHelper.getOlCount() * 4;
 	}
+	
+	@Override
+	public boolean isDoingReplication() {
+		return false;
+	}
 }

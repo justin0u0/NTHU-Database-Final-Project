@@ -63,6 +63,8 @@ public abstract class TPartStoredProcedure<H extends StoredProcedureParamHelper>
 	protected abstract void prepareKeys();
 
 	protected abstract void executeSql(Map<PrimaryKey, CachedRecord> readings);
+	
+	public abstract boolean isDoingReplication();
 
 	@Override
 	public void prepare(Object... pars) {

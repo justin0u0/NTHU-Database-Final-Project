@@ -16,6 +16,10 @@ public class TpccPartitionPlan extends PartitionPlan {
 	public boolean isFullyReplicated(PrimaryKey key) {
 		return key.getTableName().equals("item");
 	}
+	@Override
+	public void setFullyReplicatedKey(PrimaryKey key) {
+		
+	}
 	
 	public static Integer getWarehouseId(PrimaryKey key) {
 		// For other tables, partitioned by wid

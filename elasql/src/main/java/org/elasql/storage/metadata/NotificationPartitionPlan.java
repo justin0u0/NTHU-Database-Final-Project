@@ -41,6 +41,11 @@ public class NotificationPartitionPlan extends PartitionPlan {
 		
 		return basePlan.isFullyReplicated(key);
 	}
+	
+	@Override
+	public void setFullyReplicatedKey(PrimaryKey key) {
+		basePlan.setFullyReplicatedKey(key);
+	}
 
 	@Override
 	public int getPartition(PrimaryKey key) {

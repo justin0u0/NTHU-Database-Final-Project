@@ -104,7 +104,7 @@ public class CostAwareNodeInserter implements BatchNodeInserter {
 		}
 		
 		// Insert the node
-		graph.insertTxNode(task, minCostPart);
+		graph.insertTxNode(task, minCostPart, true);
 		
 		// Update the statistics
 		loadPerPart[minCostPart] += task.getWeight();

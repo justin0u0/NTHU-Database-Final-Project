@@ -1,5 +1,6 @@
 package org.elasql.schedule.tpart.graph;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -34,14 +35,39 @@ public class TGraph {
 			sinkNodes[partId] = new SinkNode(partId);
 		parMeta = Elasql.partitionMetaMgr();
 	}
+	
+	/**
+	 * 
+	 * @param task
+	 * @param replicatedKeys
+	 * @param assignedPartId the target server id to run on
+	 */
+	public void insertReplicationNode(TPartStoredProcedureTask task, ArrayList<PrimaryKey> replicatedKeys, int assignedPartId) {
+		// Assign to current server, since everyone is responsible
+		// for doing replication work
+		TxNode node = new TxNode(task, assignedPartId, false);
+		txNodes.add(node);
+		
+		for (PrimaryKey res : replicatedKeys) {
+			Node targetNode;
+
+			if (parMeta.isFullyReplicated(res))
+				targetNode = sinkNodes[node.getPartId()];
+			else
+				targetNode = getResourcePosition(res);
+
+			node.addReadEdges(new Edge(targetNode, res));
+			targetNode.addWriteEdges(new Edge(node, res));
+		}
+	}
 
 	/**
 	 * Insert a new tx node into the t-graph.
 	 * 
 	 * @param node
 	 */
-	public void insertTxNode(TPartStoredProcedureTask task, int assignedPartId) {
-		TxNode node = new TxNode(task, assignedPartId);
+	public void insertTxNode(TPartStoredProcedureTask task, int assignedPartId, boolean allowReroute) {
+		TxNode node = new TxNode(task, assignedPartId, allowReroute);
 		txNodes.add(node);
 		
 		// Establish forward pushing edges

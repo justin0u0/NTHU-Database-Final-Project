@@ -16,9 +16,11 @@ public class TpartYcsbProc extends TPartStoredProcedure<ElasqlYcsbProcParamHelpe
 	private PrimaryKey[] writeKeys;
 	private PrimaryKey[] insertKeys;
 	private Map<PrimaryKey, Constant> writeConstantMap = new HashMap<PrimaryKey, Constant>();
+	private boolean doingReplication;
 	
-	public TpartYcsbProc(long txNum) {
+	public TpartYcsbProc(long txNum, boolean doingReplication) {
 		super(txNum, new ElasqlYcsbProcParamHelper());
+		this.doingReplication = doingReplication;
 	}
 	
 	@Override
@@ -83,5 +85,8 @@ public class TpartYcsbProc extends TPartStoredProcedure<ElasqlYcsbProcParamHelpe
 		return paramHelper.getReadCount() + paramHelper.getWriteCount() + 
 				paramHelper.getInsertCount();
 	}
-
+	
+	public boolean isDoingReplication() {
+		return doingReplication;
+	}
 }
