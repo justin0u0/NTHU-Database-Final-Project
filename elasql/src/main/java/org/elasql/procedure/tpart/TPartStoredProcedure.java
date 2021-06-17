@@ -196,7 +196,7 @@ public abstract class TPartStoredProcedure<H extends StoredProcedureParamHelper>
 		int sinkId = plan.sinkProcessId();
 //		Timer timer = Timer.getLocalTimer();
 
-		if (plan.isHereMaster()) {
+		if (plan.isHereMaster() && !plan.getIsDoingReplication()) {
 			Map<PrimaryKey, CachedRecord> readings = new HashMap<PrimaryKey, CachedRecord>();
 			// Read the records from the local sink
 //			timer.startComponentTimer("Read from sink");

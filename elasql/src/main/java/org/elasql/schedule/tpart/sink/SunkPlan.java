@@ -33,10 +33,17 @@ public class SunkPlan {
 	private Map<Integer, Set<PushInfo>> sinkPushingInfoMap = new HashMap<Integer, Set<PushInfo>>();
 
 	private Set<PrimaryKey> sinkReadingSet = new HashSet<PrimaryKey>();
+	
+	private boolean isDoingReplication;
 
-	public SunkPlan(int sinkProcessId, boolean isHereMaster) {
+	public SunkPlan(int sinkProcessId, boolean isHereMaster, boolean isDoingReplication) {
 		this.sinkProcessId = sinkProcessId;
 		this.isHereMaster = isHereMaster;
+		this.isDoingReplication = isDoingReplication;
+	}
+	
+	public boolean getIsDoingReplication() {
+		return isDoingReplication;
 	}
 
 	public void addReadingInfo(PrimaryKey key, long srcTxNum) {
