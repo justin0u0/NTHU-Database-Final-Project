@@ -153,7 +153,9 @@ public class TPartPartitioner extends Task implements Scheduler {
 			return new TPartStoredProcedureTask(call.getClientId(), call.getConnectionId(), call.getTxNum(), null);
 		} else {
 			TPartStoredProcedure<?> sp = factory.getStoredProcedure(call.getPid(), call.getTxNum());
-			sp.prepare(call.getPars());
+			if (!sp.isDoingReplication()) {
+				sp.prepare(call.getPars());
+			}
 
 			if (!sp.isReadOnly())
 				DdRecoveryMgr.logRequest(call);
