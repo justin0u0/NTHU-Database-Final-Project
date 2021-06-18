@@ -68,13 +68,25 @@ public class HermesNodeInserter implements BatchNodeInserter {
 			if (totalNumberOfTxs % DO_REPLICATION_TXS_SIZE == 0) recalculateHotRecordKeys();
 		}
 		
-		// (Step 2: Insert txs execute before replication (reordering)) (TODO)
+		// Step 2
+		ArrayList<TPartStoredProcedureTask> restOfTasks = new ArrayList<TPartStoredProcedureTask>();
+		for (TPartStoredProcedureTask task : tasks) {
+			boolean containWriteHotRecord = false;
+			for (PrimaryKey key : task.getWriteSet()) {
+				if (hotRecordKeys.contains(key)) {
+					containWriteHotRecord = true;
+					break;
+				}
+			}
+			if (containWriteHotRecord) insertAccordingRemoteEdges(graph, task);
+			else restOfTasks.add(task);
+		}
 
 		// Step 3: Insert replica node into graph
 		insertReplicationNodeAndEdges(graph, replicaTask);
 
 		// Step 4: Insert nodes to the graph
-		for (TPartStoredProcedureTask task : tasks) {
+		for (TPartStoredProcedureTask task : restOfTasks) {
 			insertAccordingRemoteEdges(graph, task);
 		}
 		
@@ -101,7 +113,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		}
 		
 		// Step 7: replica txs
-		findShouldReplicaTxs(graph);
+		// findShouldReplicaTxs(graph);
 
 //		System.out.println(String.format("Final loads: %s", Arrays.toString(loadPerPart)));
 	}
