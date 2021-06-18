@@ -39,7 +39,7 @@ public class CostAwareNodeInserter implements BatchNodeInserter {
 	/**
 	 * Insert this node to the partition that will result in minimal cost.
 	 */
-	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks) {
+	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks, TPartStoredProcedureTask replicaTask) {
 		// XXX: Check warehouse distributions
 //		Arrays.fill(warehouses, 0);
 		

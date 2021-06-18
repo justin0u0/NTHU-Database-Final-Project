@@ -31,6 +31,7 @@ public class TPartPartitioner extends Task implements Scheduler {
 	private static Logger logger = Logger.getLogger(TPartPartitioner.class.getName());
 
 	private static final int NUM_TASK_PER_SINK;
+	private static final int SP_DOING_REPLICATION = -1234;
 
 	private TPartStoredProcedureFactory factory;
 	
@@ -120,8 +121,11 @@ public class TPartPartitioner extends Task implements Scheduler {
 	}
 	
 	private void processBatch(List<TPartStoredProcedureTask> batchedTasks) {
+		StoredProcedureCall call = new StoredProcedureCall(-1, -1, SP_DOING_REPLICATION, new Object[] {});
+		TPartStoredProcedureTask task = createStoredProcedureTask(call);
+		
 		// Insert the batch of tasks
-		inserter.insertBatch(graph, batchedTasks);
+		inserter.insertBatch(graph, batchedTasks, task);
 		
 		// Debug
 //		printGraphStatistics();

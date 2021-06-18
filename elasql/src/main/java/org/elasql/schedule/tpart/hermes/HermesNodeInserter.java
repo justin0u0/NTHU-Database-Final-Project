@@ -24,7 +24,6 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	private static final double IMBALANCED_TOLERANCE;
 	private static final double IS_HOT_RECORD_THRESHOLD;
 	private static final int DO_REPLICATION_TXS_SIZE;
-	private static final int SP_DOING_REPLICATION = -1234;
 
 	static {
 		IMBALANCED_TOLERANCE = ElasqlProperties.getLoader()
@@ -40,7 +39,6 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	private int overloadedThreshold;
 	private HashMap<PrimaryKey, MutableInteger> readWriteCount = new HashMap<PrimaryKey, MutableInteger>();
 	private int totalNumberOfTxs = 0;
-	private TPartStoredProcedureTask replicaTask = null;
 	private ArrayList<PrimaryKey> hotRecordKeys = new ArrayList<PrimaryKey>();
 	
 	private class MutableInteger {
@@ -50,56 +48,43 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	}
 
 	@Override
-	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks) {
+	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks, TPartStoredProcedureTask replicaTask) {
 		// Step 0: Reset statistics
 		resetStatistics();
 		
 		// Step 1: calculate read write count, update replicaTask if needed
 		for (TPartStoredProcedureTask task : tasks) {
-			if (!task.getProcedure().isDoingReplication()) {
-				totalNumberOfTxs++;
-				for (PrimaryKey key : task.getReadSet()) {
-					MutableInteger count = readWriteCount.get(key);
-					if (count == null) count = new MutableInteger();
-					else count.increment();
-				}
-				for (PrimaryKey key : task.getWriteSet()) {
-					MutableInteger count = readWriteCount.get(key);
-					if (count == null) count = new MutableInteger();
-					else count.increment();
-				}
-				
-				// Add a task to do replication
-				if (totalNumberOfTxs % DO_REPLICATION_TXS_SIZE == 0) {
-					Elasql.connectionMgr().sendStoredProcedureCall(false, SP_DOING_REPLICATION, new Object[] {});
-				}
-			} else {
-				recalculateHotRecordKeys();
-				replicaTask = task;
+			totalNumberOfTxs++;
+			for (PrimaryKey key : task.getReadSet()) {
+				MutableInteger count = readWriteCount.get(key);
+				if (count == null) count = new MutableInteger();
+				else count.increment();
 			}
+			for (PrimaryKey key : task.getWriteSet()) {
+				MutableInteger count = readWriteCount.get(key);
+				if (count == null) count = new MutableInteger();
+				else count.increment();
+			}
+			if (totalNumberOfTxs % DO_REPLICATION_TXS_SIZE == 0) recalculateHotRecordKeys();
 		}
 		
 		// (Step 2: Insert txs execute before replication (reordering)) (TODO)
 
 		// Step 3: Insert replica node into graph
-		if (replicaTask != null) {
-			insertReplicationNodeAndEdges(graph, replicaTask);
-		}
+		insertReplicationNodeAndEdges(graph, replicaTask);
 		
 		// Step 4: Find should replica txs
 		HashSet<Long> shouldReplicaTxs = findShouldReplicaTxs(tasks);
 		
 		// Step 5: Insert nodes to the graph
 		for (TPartStoredProcedureTask task : tasks) {
-			if (!task.getProcedure().isDoingReplication()) {
-				if (shouldReplicaTxs.contains(task.getTxNum())) {
-					for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
-						// TODO: optimization, find a way that do not need to replica to all nodes.
-						graph.insertTxNode(task, partId, false);
-					}
-				} else {
-					insertAccordingRemoteEdges(graph, task);
+			if (shouldReplicaTxs.contains(task.getTxNum())) {
+				for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
+					// TODO: optimization, find a way that do not need to replica to all nodes.
+					graph.insertTxNode(task, partId, false);
 				}
+			} else {
+				insertAccordingRemoteEdges(graph, task);
 			}
 		}
 		
@@ -140,7 +125,6 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		HashSet<Long> shouldReplicaTxs = new HashSet<Long>();
 		while (li.hasPrevious()) {
 			TPartStoredProcedureTask task = li.previous();
-			if (task.getProcedure().isDoingReplication()) continue;
 			
 			for (PrimaryKey key : task.getWriteSet()) {
 				if (partMgr.isFullyReplicated(key) && hasRead.contains(key)) {

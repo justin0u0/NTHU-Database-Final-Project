@@ -13,5 +13,5 @@ public interface BatchNodeInserter {
 	 * @param graph
 	 * @param node
 	 */
-	void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks);
+	void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks, TPartStoredProcedureTask replicaTask);
 }

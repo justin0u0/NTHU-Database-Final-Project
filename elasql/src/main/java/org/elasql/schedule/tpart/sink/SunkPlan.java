@@ -33,7 +33,7 @@ public class SunkPlan {
 	private Map<Integer, Set<PushInfo>> sinkPushingInfoMap = new HashMap<Integer, Set<PushInfo>>();
 
 	private Set<PrimaryKey> sinkReadingSet = new HashSet<PrimaryKey>();
-	
+
 	private boolean isDoingReplication;
 
 	public SunkPlan(int sinkProcessId, boolean isHereMaster, boolean isDoingReplication) {
@@ -45,7 +45,7 @@ public class SunkPlan {
 	public boolean getIsDoingReplication() {
 		return isDoingReplication;
 	}
-
+	
 	public void addReadingInfo(PrimaryKey key, long srcTxNum) {
 		// not need to specify dest, that is the owner tx num
 		if (readingInfoMap == null)
