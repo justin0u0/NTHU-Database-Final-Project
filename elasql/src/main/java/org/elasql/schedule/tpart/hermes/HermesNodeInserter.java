@@ -72,24 +72,13 @@ public class HermesNodeInserter implements BatchNodeInserter {
 
 		// Step 3: Insert replica node into graph
 		insertReplicationNodeAndEdges(graph, replicaTask);
-		
-		// Step 4: Find should replica txs -> Move to after overloading
-		// HashSet<Long> shouldReplicaTxs = findShouldReplicaTxs(tasks);
-		
-		// Step 5: Insert nodes to the graph
+
+		// Step 4: Insert nodes to the graph
 		for (TPartStoredProcedureTask task : tasks) {
-//			if (shouldReplicaTxs.contains(task.getTxNum())) {
-//				for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
-//					// TODO: optimization, find a way that do not need to replica to all nodes.
-//					graph.insertTxNode(task, partId, false);
-//				}
-//			} else {
-//				insertAccordingRemoteEdges(graph, task);
-//			}
 			insertAccordingRemoteEdges(graph, task);
 		}
 		
-		// Step 6: Find overloaded machines
+		// Step 5: Find overloaded machines
 		overloadedThreshold = (int) Math.ceil(
 				((double) tasks.size() / partMgr.getCurrentNumOfParts()) * (IMBALANCED_TOLERANCE + 1));
 		if (overloadedThreshold < 1) {
@@ -100,7 +89,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 //		System.out.println(String.format("Overloaded threshold is %d (batch size: %d)", overloadedThreshold, tasks.size()));
 //		System.out.println(String.format("Overloaded machines: %s, loads: %s", overloadedParts.toString(), Arrays.toString(loadPerPart)));
 		
-		// Step 7: Move tx nodes from overloaded machines to underloaded machines
+		// Step 6: Move tx nodes from overloaded machines to underloaded machines
 		int increaseTolerence = 1;
 		while (!overloadedParts.isEmpty()) {
 //			System.out.println(String.format("Overloaded machines: %s, loads: %s, increaseTolerence: %d", overloadedParts.toString(), Arrays.toString(loadPerPart), increaseTolerence));
@@ -111,7 +100,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 				throw new RuntimeException("Something wrong");
 		}
 		
-		// Step 8: replica txs
+		// Step 7: replica txs
 		findShouldReplicaTxs(graph);
 
 //		System.out.println(String.format("Final loads: %s", Arrays.toString(loadPerPart)));
@@ -163,6 +152,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		for (PrimaryKey key : readWriteCount.keySet()) {
 			if (isHotRecord(key)) {
 				hotRecordKeys.add(key);
+				partMgr.setFullyReplicatedKey(key);
 			}
 		}
 	}
@@ -170,10 +160,6 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	private void insertReplicationNodeAndEdges(TGraph graph, TPartStoredProcedureTask task) {
 		for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
 			graph.insertReplicationNode(task, hotRecordKeys, partId);
-		}
-
-		for (PrimaryKey key : hotRecordKeys) {
-			partMgr.setFullyReplicatedKey(key);
 		}
 	}
 	
