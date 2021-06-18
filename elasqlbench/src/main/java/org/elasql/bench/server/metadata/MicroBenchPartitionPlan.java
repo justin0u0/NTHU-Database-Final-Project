@@ -26,7 +26,12 @@ public class MicroBenchPartitionPlan extends PartitionPlan {
 		}
 	}
 	
+	@Override
 	public void setFullyReplicatedKey(PrimaryKey key) {
+	}
+	
+	@Override
+	public void clearFullyReplicatedKeys() {
 	}
 	
 	public int getPartition(int iid) {

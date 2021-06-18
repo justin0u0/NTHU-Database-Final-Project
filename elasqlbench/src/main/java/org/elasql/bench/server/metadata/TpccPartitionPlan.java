@@ -20,6 +20,9 @@ public class TpccPartitionPlan extends PartitionPlan {
 	public void setFullyReplicatedKey(PrimaryKey key) {
 		
 	}
+	@Override
+	public void clearFullyReplicatedKeys() {
+	}
 	
 	public static Integer getWarehouseId(PrimaryKey key) {
 		// For other tables, partitioned by wid

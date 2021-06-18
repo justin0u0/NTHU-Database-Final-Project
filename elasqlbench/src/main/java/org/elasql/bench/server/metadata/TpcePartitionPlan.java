@@ -15,6 +15,9 @@ public class TpcePartitionPlan extends PartitionPlan {
 	@Override
 	public void setFullyReplicatedKey(PrimaryKey key) {
 	}
+	@Override
+	public void clearFullyReplicatedKeys() {
+	}
 
 	@Override
 	public int getPartition(PrimaryKey key) {

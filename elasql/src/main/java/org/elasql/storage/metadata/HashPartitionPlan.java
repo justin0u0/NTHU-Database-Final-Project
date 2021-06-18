@@ -28,6 +28,11 @@ public class HashPartitionPlan extends PartitionPlan {
 	public void setFullyReplicatedKey(PrimaryKey key) {
 		fullyReplicatedKeys.add(key);
 	}
+	
+	@Override
+	public void clearFullyReplicatedKeys() {
+		fullyReplicatedKeys.clear();
+	}
 
 	@Override
 	public int getPartition(PrimaryKey key) {

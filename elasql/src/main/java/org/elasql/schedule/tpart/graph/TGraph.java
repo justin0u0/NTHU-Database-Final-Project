@@ -49,13 +49,7 @@ public class TGraph {
 		txNodes.add(node);
 		
 		for (PrimaryKey res : replicatedKeys) {
-			Node targetNode;
-
-			if (parMeta.isFullyReplicated(res))
-				targetNode = sinkNodes[node.getPartId()];
-			else
-				targetNode = getResourcePosition(res);
-
+			Node targetNode = sinkNodes[parMeta.getPartition(res)]; // From the original partition
 			node.addReadEdges(new Edge(targetNode, res));
 			targetNode.addWriteEdges(new Edge(node, res));
 		}
