@@ -88,6 +88,25 @@ public class TGraph {
 				resPos.put(res, node);
 		}
 	}
+	
+	/**
+	 * Copy txNodes.get(templateTxNodeIndex) to run on partId
+	 * @param templateTxNodeIndex
+	 * @param partId
+	 */
+	public void copyTxNode(int templateTxNodeIndex, int partId) {
+		TxNode templateNode = txNodes.get(templateTxNodeIndex);
+		TPartStoredProcedureTask task = templateNode.getTask();
+		TxNode node = new TxNode(task, partId, false);
+		txNodes.add(templateTxNodeIndex, node);
+		
+		for (Edge e : templateNode.getReadEdges()) {
+			node.addReadEdges(new Edge(e.getTarget(), e.getResourceKey()));
+		}
+		for (Edge e : templateNode.getReversedWriteEdges()) {
+			e.getTarget().addWriteEdges(new Edge(node, e.getResourceKey()));
+		}
+	}
 
 	/**
 	 * Write back all modified data records to their original partitions.

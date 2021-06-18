@@ -73,19 +73,20 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		// Step 3: Insert replica node into graph
 		insertReplicationNodeAndEdges(graph, replicaTask);
 		
-		// Step 4: Find should replica txs
-		HashSet<Long> shouldReplicaTxs = findShouldReplicaTxs(tasks);
+		// Step 4: Find should replica txs -> Move to after overloading
+		// HashSet<Long> shouldReplicaTxs = findShouldReplicaTxs(tasks);
 		
 		// Step 5: Insert nodes to the graph
 		for (TPartStoredProcedureTask task : tasks) {
-			if (shouldReplicaTxs.contains(task.getTxNum())) {
-				for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
-					// TODO: optimization, find a way that do not need to replica to all nodes.
-					graph.insertTxNode(task, partId, false);
-				}
-			} else {
-				insertAccordingRemoteEdges(graph, task);
-			}
+//			if (shouldReplicaTxs.contains(task.getTxNum())) {
+//				for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
+//					// TODO: optimization, find a way that do not need to replica to all nodes.
+//					graph.insertTxNode(task, partId, false);
+//				}
+//			} else {
+//				insertAccordingRemoteEdges(graph, task);
+//			}
+			insertAccordingRemoteEdges(graph, task);
 		}
 		
 		// Step 6: Find overloaded machines
@@ -109,6 +110,9 @@ public class HermesNodeInserter implements BatchNodeInserter {
 			if (increaseTolerence > 100)
 				throw new RuntimeException("Something wrong");
 		}
+		
+		// Step 8: replica txs
+		findShouldReplicaTxs(graph);
 
 //		System.out.println(String.format("Final loads: %s", Arrays.toString(loadPerPart)));
 	}
@@ -119,26 +123,38 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		saturatedParts.clear();
 	}
 	
-	private HashSet<Long> findShouldReplicaTxs(List<TPartStoredProcedureTask> tasks) {
-		ListIterator<TPartStoredProcedureTask> li = tasks.listIterator(tasks.size());
-		HashSet<PrimaryKey> hasRead = new HashSet<PrimaryKey>();
-		HashSet<Long> shouldReplicaTxs = new HashSet<Long>();
-		while (li.hasPrevious()) {
-			TPartStoredProcedureTask task = li.previous();
-			
-			for (PrimaryKey key : task.getWriteSet()) {
-				if (partMgr.isFullyReplicated(key) && hasRead.contains(key)) {
-					shouldReplicaTxs.add(task.getTxNum());
+	private void findShouldReplicaTxs(TGraph graph) {
+		HashMap<PrimaryKey, HashSet<Integer>> hasRead = new HashMap<PrimaryKey, HashSet<Integer>>(); // key: pk, value: set of partIds => key pk has been read by some partIds
+		
+		List<TxNode> txNodes = graph.getTxNodes();
+		ArrayList<Integer[]> copyTxNodes = new ArrayList<Integer[]>();
+
+		for (int i = txNodes.size() - 1; i >= 0; i--) {
+			TxNode node = txNodes.get(i);
+			if (node.getTask().getProcedure().isDoingReplication()) continue;
+
+			for (PrimaryKey key : node.getTask().getWriteSet()) {
+				if (partMgr.isFullyReplicated(key) && hasRead.containsKey(key)) {
+					for (Integer partId : hasRead.get(key)) {
+						if (node.getPartId() != partId) {
+							copyTxNodes.add(new Integer[] {i, partId});
+						}
+					}
 				}
 			}
-			
-			for (PrimaryKey key : task.getReadSet()) {
+			for (PrimaryKey key : node.getTask().getReadSet()) {
 				if (partMgr.isFullyReplicated(key)) {
-					hasRead.add(key);
+					if (!hasRead.containsKey(key)) {
+						hasRead.put(key, new HashSet<Integer>());
+					}
+					hasRead.get(key).add(node.getPartId());
 				}
 			}
 		}
-		return shouldReplicaTxs;
+		
+		for (Integer[] copyTxNode : copyTxNodes) {
+			graph.copyTxNode(copyTxNode[0], copyTxNode[1]);
+		}
 	}
 	
 	private void recalculateHotRecordKeys() {

@@ -9,6 +9,7 @@ public class TxNode extends Node {
 	
 	private Set<Edge> readEdges;
 	private Set<Edge> writeBackEdges;
+	private Set<Edge> reversedWriteEdges;
 	
 	private TPartStoredProcedureTask txTask;
 	private boolean allowReroute;
@@ -32,9 +33,17 @@ public class TxNode extends Node {
 	public Set<Edge> getWriteBackEdges() {
 		return writeBackEdges;
 	}
+	
+	public Set<Edge> getReversedWriteEdges() {
+		return reversedWriteEdges;
+	}
 
 	public void addReadEdges(Edge e) {
 		readEdges.add(e);
+	}
+	
+	public void addReversedWriteEdges(Edge e) {
+		reversedWriteEdges.add(e);
 	}
 
 	public void addWriteBackEdges(Edge e) {
