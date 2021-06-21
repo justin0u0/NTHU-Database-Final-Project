@@ -29,7 +29,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		IMBALANCED_TOLERANCE = ElasqlProperties.getLoader()
 				.getPropertyAsDouble(HermesNodeInserter.class.getName() + ".IMBALANCED_TOLERANCE", 0.25);
 		IS_HOT_RECORD_THRESHOLD = (0.75 / PartitionMetaMgr.NUM_PARTITIONS);
-		DO_REPLICATION_TXS_SIZE = 100;
+		DO_REPLICATION_TXS_SIZE = 1000;
 	}
 	
 	private PartitionMetaMgr partMgr = Elasql.partitionMetaMgr();
