@@ -1,7 +1,7 @@
 package org.elasql.schedule.tpart.graph;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +42,7 @@ public class TGraph {
 	 * @param replicatedKeys
 	 * @param assignedPartId the target server id to run on
 	 */
-	public void insertReplicationNode(TPartStoredProcedureTask task, ArrayList<PrimaryKey> replicatedKeys, int assignedPartId) {
+	public void insertReplicationNode(TPartStoredProcedureTask task, HashSet<PrimaryKey> replicatedKeys, int assignedPartId) {
 		// Assign to current server, since everyone is responsible
 		// for doing replication work
 		TxNode node = new TxNode(task, assignedPartId, false);
@@ -60,7 +60,7 @@ public class TGraph {
 	 * 
 	 * @param node
 	 */
-	public void insertTxNode(TPartStoredProcedureTask task, int assignedPartId, boolean allowReroute) {
+	public void insertTxNode(TPartStoredProcedureTask task, int assignedPartId, boolean allowReroute, HashSet<PrimaryKey> hotRecordKeys) {
 		TxNode node = new TxNode(task, assignedPartId, allowReroute);
 		txNodes.add(node);
 		
@@ -71,7 +71,7 @@ public class TGraph {
 
 				Node targetNode;
 
-				if (parMeta.isFullyReplicated(res))
+				if ((hotRecordKeys != null && hotRecordKeys.contains(res)) || parMeta.isFullyReplicated(res))
 					targetNode = sinkNodes[node.getPartId()];
 				else
 					targetNode = getResourcePosition(res);
@@ -94,6 +94,7 @@ public class TGraph {
 	 * @param templateTxNodeIndex
 	 * @param partId
 	 */
+	/* No need in v4
 	public void copyTxNode(int templateTxNodeIndex, int partId) {
 		TxNode templateNode = txNodes.get(templateTxNodeIndex);
 		TPartStoredProcedureTask task = templateNode.getTask();
@@ -107,6 +108,7 @@ public class TGraph {
 			e.getTarget().addWriteEdges(new Edge(node, e.getResourceKey()));
 		}
 	}
+	*/
 
 	/**
 	 * Write back all modified data records to their original partitions.

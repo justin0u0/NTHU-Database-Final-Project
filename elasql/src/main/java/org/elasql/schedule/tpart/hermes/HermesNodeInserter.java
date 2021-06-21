@@ -38,7 +38,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	private int overloadedThreshold;
 	private HashMap<PrimaryKey, MutableInteger> readWriteCount = new HashMap<PrimaryKey, MutableInteger>();
 	private int totalNumberOfTxs = 0;
-	private ArrayList<PrimaryKey> hotRecordKeys = new ArrayList<PrimaryKey>();
+	private HashSet<PrimaryKey> hotRecordKeys = new HashSet<PrimaryKey>();
 	
 	private class MutableInteger {
 		int value = 1;
@@ -112,6 +112,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		}
 		
 		// Step 7: replica txs
+		// No need in v4
 		// findShouldReplicaTxs(graph);
 
 //		System.out.println(String.format("Final loads: %s", Arrays.toString(loadPerPart)));
@@ -123,6 +124,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		saturatedParts.clear();
 	}
 	
+	/* No need in v4
 	private void findShouldReplicaTxs(TGraph graph) {
 		HashMap<PrimaryKey, HashSet<Integer>> hasRead = new HashMap<PrimaryKey, HashSet<Integer>>(); // key: pk, value: set of partIds => key pk has been read by some partIds
 		
@@ -156,6 +158,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 			graph.copyTxNode(copyTxNode[0], copyTxNode[1]);
 		}
 	}
+	*/
 	
 	private void recalculateHotRecordKeys() {
 		hotRecordKeys.clear();
@@ -188,7 +191,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 			}
 		}
 
-		graph.insertTxNode(task, bestPartId, true);
+		graph.insertTxNode(task, bestPartId, true, hotRecordKeys);
 		
 		loadPerPart[bestPartId]++;
 	}

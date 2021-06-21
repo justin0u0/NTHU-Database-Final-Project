@@ -48,7 +48,7 @@ public class LocalFirstNodeInserter implements BatchNodeInserter {
 			bestPartId = ties.get(chooseTiePart);
 		}
 		
-		graph.insertTxNode(task, bestPartId, true);
+		graph.insertTxNode(task, bestPartId, true, null);
 	}
 	
 	private int countRemoteReadEdge(TGraph graph, TPartStoredProcedureTask task, int partId) {

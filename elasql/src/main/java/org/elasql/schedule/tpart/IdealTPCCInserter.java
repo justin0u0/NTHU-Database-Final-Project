@@ -27,7 +27,7 @@ public class IdealTPCCInserter implements BatchNodeInserter {
 			
 			if (partId == -1)
 				throw new RuntimeException("Something wrong");
-			graph.insertTxNode(task, partId, true);
+			graph.insertTxNode(task, partId, true, null);
 		}
 	}
 }
