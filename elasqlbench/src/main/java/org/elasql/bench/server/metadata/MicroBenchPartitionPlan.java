@@ -26,14 +26,6 @@ public class MicroBenchPartitionPlan extends PartitionPlan {
 		}
 	}
 	
-	@Override
-	public void setFullyReplicatedKey(PrimaryKey key) {
-	}
-	
-	@Override
-	public void clearFullyReplicatedKeys() {
-	}
-	
 	public int getPartition(int iid) {
 		return (iid - 1) / ElasqlMicrobenchConstants.NUM_ITEMS_PER_NODE;
 	}

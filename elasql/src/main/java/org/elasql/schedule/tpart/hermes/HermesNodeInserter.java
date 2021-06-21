@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Set;
 
 import org.elasql.procedure.tpart.TPartStoredProcedureTask;
@@ -135,7 +134,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 			if (node.getTask().getProcedure().isDoingReplication()) continue;
 
 			for (PrimaryKey key : node.getTask().getWriteSet()) {
-				if (partMgr.isFullyReplicated(key) && hasRead.containsKey(key)) {
+				if (hotRecordKeys.contains(key) && hasRead.containsKey(key)) {
 					for (Integer partId : hasRead.get(key)) {
 						if (node.getPartId() != partId) {
 							copyTxNodes.add(new Integer[] {i, partId});
@@ -144,7 +143,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 				}
 			}
 			for (PrimaryKey key : node.getTask().getReadSet()) {
-				if (partMgr.isFullyReplicated(key)) {
+				if (hotRecordKeys.contains(key)) {
 					if (!hasRead.containsKey(key)) {
 						hasRead.put(key, new HashSet<Integer>());
 					}
@@ -159,12 +158,10 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	}
 	
 	private void recalculateHotRecordKeys() {
-		partMgr.clearFullyReplicatedKeys();
 		hotRecordKeys.clear();
 		for (PrimaryKey key : readWriteCount.keySet()) {
 			if (isHotRecord(key)) {
 				hotRecordKeys.add(key);
-				partMgr.setFullyReplicatedKey(key);
 			}
 		}
 	}
@@ -201,7 +198,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		
 		for (PrimaryKey key : task.getReadSet()) {
 			// Skip replicated records
-			if (partMgr.isFullyReplicated(key))
+			if (hotRecordKeys.contains(key))
 				continue;
 			
 			if (graph.getResourcePosition(key).getPartId() != partId) {
@@ -315,7 +312,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		
 		for (Edge readEdge : node.getReadEdges()) {
 			// Skip replicated records
-			if (partMgr.isFullyReplicated(readEdge.getResourceKey()))
+			if (hotRecordKeys.contains(readEdge.getResourceKey()))
 				continue;
 			
 			if (readEdge.getTarget().getPartId() != homePartId)
