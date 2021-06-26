@@ -175,7 +175,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		}
 	}
 	
-	private void insertAccordingRemoteEdges(TGraph graph, TPartStoredProcedureTask task, HashSet<Integer> hotRecords) {
+	private void insertAccordingRemoteEdges(TGraph graph, TPartStoredProcedureTask task, HashSet<PrimaryKey> hotRecords) {
 		int bestPartId = 0;
 		int minRemoteEdgeCount = task.getReadSet().size();
 		
