@@ -77,7 +77,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 					break;
 				}
 			}
-			if (containWriteHotRecord) insertAccordingRemoteEdges(graph, task);
+			if (containWriteHotRecord) insertAccordingRemoteEdges(graph, task, null); // Before hotRecordKeys replicated, so hotRecordKeys should be null
 			else restOfTasks.add(task);
 		}
 
@@ -86,7 +86,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 
 		// Step 4: Insert nodes to the graph
 		for (TPartStoredProcedureTask task : restOfTasks) {
-			insertAccordingRemoteEdges(graph, task);
+			insertAccordingRemoteEdges(graph, task, hotRecordKeys);
 		}
 		
 		// Step 5: Find overloaded machines
@@ -175,7 +175,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		}
 	}
 	
-	private void insertAccordingRemoteEdges(TGraph graph, TPartStoredProcedureTask task) {
+	private void insertAccordingRemoteEdges(TGraph graph, TPartStoredProcedureTask task, HashSet<Integer> hotRecords) {
 		int bestPartId = 0;
 		int minRemoteEdgeCount = task.getReadSet().size();
 		
@@ -191,7 +191,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 			}
 		}
 
-		graph.insertTxNode(task, bestPartId, true, hotRecordKeys);
+		graph.insertTxNode(task, bestPartId, true, hotRecords);
 		
 		loadPerPart[bestPartId]++;
 	}
