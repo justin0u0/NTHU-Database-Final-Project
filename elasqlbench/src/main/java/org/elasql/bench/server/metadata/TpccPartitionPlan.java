@@ -16,7 +16,7 @@ public class TpccPartitionPlan extends PartitionPlan {
 	public boolean isFullyReplicated(PrimaryKey key) {
 		return key.getTableName().equals("item");
 	}
-	
+
 	public static Integer getWarehouseId(PrimaryKey key) {
 		// For other tables, partitioned by wid
 		Constant widCon;

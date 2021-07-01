@@ -34,5 +34,9 @@ public class StartProfilingProc extends TPartStoredProcedure<StoredProcedurePara
 	public double getWeight() {
 		return 0;
 	}
+	@Override
+	public boolean isDoingReplication() {
+		return false;
+	}
 }
 

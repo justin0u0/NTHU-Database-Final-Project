@@ -15,7 +15,7 @@ public class LocalFirstNodeInserter implements BatchNodeInserter {
 	private List<Integer> ties = new ArrayList<Integer>();
 
 	@Override
-	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks) {
+	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks, TPartStoredProcedureTask replicaTask) {
 		for (TPartStoredProcedureTask task : tasks) {
 			insertAccordingRemoteEdges(graph, task);
 		}
@@ -48,7 +48,7 @@ public class LocalFirstNodeInserter implements BatchNodeInserter {
 			bestPartId = ties.get(chooseTiePart);
 		}
 		
-		graph.insertTxNode(task, bestPartId);
+		graph.insertTxNode(task, bestPartId, true, null);
 	}
 	
 	private int countRemoteReadEdge(TGraph graph, TPartStoredProcedureTask task, int partId) {

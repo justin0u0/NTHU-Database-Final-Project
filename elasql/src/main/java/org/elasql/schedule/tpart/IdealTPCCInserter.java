@@ -8,7 +8,7 @@ import org.elasql.sql.PrimaryKey;
 
 public class IdealTPCCInserter implements BatchNodeInserter {
 	@Override
-	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks) {
+	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks, TPartStoredProcedureTask replicaTask) {
 		for (TPartStoredProcedureTask task : tasks) {
 			int partId = -1;
 			
@@ -27,7 +27,7 @@ public class IdealTPCCInserter implements BatchNodeInserter {
 			
 			if (partId == -1)
 				throw new RuntimeException("Something wrong");
-			graph.insertTxNode(task, partId);
+			graph.insertTxNode(task, partId, true, null);
 		}
 	}
 }

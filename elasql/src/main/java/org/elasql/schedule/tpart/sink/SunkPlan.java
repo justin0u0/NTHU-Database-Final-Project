@@ -34,11 +34,18 @@ public class SunkPlan {
 
 	private Set<PrimaryKey> sinkReadingSet = new HashSet<PrimaryKey>();
 
-	public SunkPlan(int sinkProcessId, boolean isHereMaster) {
+	private boolean isDoingReplication;
+
+	public SunkPlan(int sinkProcessId, boolean isHereMaster, boolean isDoingReplication) {
 		this.sinkProcessId = sinkProcessId;
 		this.isHereMaster = isHereMaster;
+		this.isDoingReplication = isDoingReplication;
 	}
-
+	
+	public boolean getIsDoingReplication() {
+		return isDoingReplication;
+	}
+	
 	public void addReadingInfo(PrimaryKey key, long srcTxNum) {
 		// not need to specify dest, that is the owner tx num
 		if (readingInfoMap == null)

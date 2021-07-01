@@ -34,4 +34,8 @@ public class StopProfilingProc extends TPartStoredProcedure<StoredProcedureParam
 	public double getWeight() {
 		return 0;
 	}
+	@Override
+	public boolean isDoingReplication() {
+		return false;
+	}
 }

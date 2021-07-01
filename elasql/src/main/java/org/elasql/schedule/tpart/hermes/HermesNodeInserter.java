@@ -3,6 +3,7 @@ package org.elasql.schedule.tpart.hermes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,10 +21,14 @@ import org.elasql.util.ElasqlProperties;
 public class HermesNodeInserter implements BatchNodeInserter {
 	
 	private static final double IMBALANCED_TOLERANCE;
+	private static final double IS_HOT_RECORD_THRESHOLD;
+	private static final int DO_REPLICATION_TXS_SIZE;
 
 	static {
 		IMBALANCED_TOLERANCE = ElasqlProperties.getLoader()
 				.getPropertyAsDouble(HermesNodeInserter.class.getName() + ".IMBALANCED_TOLERANCE", 0.25);
+		IS_HOT_RECORD_THRESHOLD = (0.75 / PartitionMetaMgr.NUM_PARTITIONS);
+		DO_REPLICATION_TXS_SIZE = 1000;
 	}
 	
 	private PartitionMetaMgr partMgr = Elasql.partitionMetaMgr();
@@ -31,18 +36,60 @@ public class HermesNodeInserter implements BatchNodeInserter {
 	private Set<Integer> overloadedParts = new HashSet<Integer>();
 	private Set<Integer> saturatedParts = new HashSet<Integer>();
 	private int overloadedThreshold;
+	private HashMap<PrimaryKey, MutableInteger> readWriteCount = new HashMap<PrimaryKey, MutableInteger>();
+	private int totalNumberOfTxs = 0;
+	private HashSet<PrimaryKey> hotRecordKeys = new HashSet<PrimaryKey>();
+	
+	private class MutableInteger {
+		int value = 1;
+		public void increment() { ++value; }
+		public int get() { return value; }
+	}
 
 	@Override
-	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks) {
+	public void insertBatch(TGraph graph, List<TPartStoredProcedureTask> tasks, TPartStoredProcedureTask replicaTask) {
 		// Step 0: Reset statistics
 		resetStatistics();
 		
-		// Step 1: Insert nodes to the graph
+		// Step 1: calculate read write count, update replicaTask if needed
 		for (TPartStoredProcedureTask task : tasks) {
-			insertAccordingRemoteEdges(graph, task);
+			totalNumberOfTxs++;
+			for (PrimaryKey key : task.getReadSet()) {
+				MutableInteger count = readWriteCount.get(key);
+				if (count == null) count = new MutableInteger();
+				else count.increment();
+			}
+			for (PrimaryKey key : task.getWriteSet()) {
+				MutableInteger count = readWriteCount.get(key);
+				if (count == null) count = new MutableInteger();
+				else count.increment();
+			}
+			if (totalNumberOfTxs % DO_REPLICATION_TXS_SIZE == 0) recalculateHotRecordKeys();
 		}
 		
-		// Step 2: Find overloaded machines
+		// Step 2
+		ArrayList<TPartStoredProcedureTask> restOfTasks = new ArrayList<TPartStoredProcedureTask>();
+		for (TPartStoredProcedureTask task : tasks) {
+			boolean containWriteHotRecord = false;
+			for (PrimaryKey key : task.getWriteSet()) {
+				if (hotRecordKeys.contains(key)) {
+					containWriteHotRecord = true;
+					break;
+				}
+			}
+			if (containWriteHotRecord) insertAccordingRemoteEdges(graph, task, null); // Before hotRecordKeys replicated, so hotRecordKeys should be null
+			else restOfTasks.add(task);
+		}
+
+		// Step 3: Insert replica node into graph
+		insertReplicationNodeAndEdges(graph, replicaTask);
+
+		// Step 4: Insert nodes to the graph
+		for (TPartStoredProcedureTask task : restOfTasks) {
+			insertAccordingRemoteEdges(graph, task, hotRecordKeys);
+		}
+		
+		// Step 5: Find overloaded machines
 		overloadedThreshold = (int) Math.ceil(
 				((double) tasks.size() / partMgr.getCurrentNumOfParts()) * (IMBALANCED_TOLERANCE + 1));
 		if (overloadedThreshold < 1) {
@@ -53,7 +100,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 //		System.out.println(String.format("Overloaded threshold is %d (batch size: %d)", overloadedThreshold, tasks.size()));
 //		System.out.println(String.format("Overloaded machines: %s, loads: %s", overloadedParts.toString(), Arrays.toString(loadPerPart)));
 		
-		// Step 3: Move tx nodes from overloaded machines to underloaded machines
+		// Step 6: Move tx nodes from overloaded machines to underloaded machines
 		int increaseTolerence = 1;
 		while (!overloadedParts.isEmpty()) {
 //			System.out.println(String.format("Overloaded machines: %s, loads: %s, increaseTolerence: %d", overloadedParts.toString(), Arrays.toString(loadPerPart), increaseTolerence));
@@ -64,6 +111,10 @@ public class HermesNodeInserter implements BatchNodeInserter {
 				throw new RuntimeException("Something wrong");
 		}
 		
+		// Step 7: replica txs
+		// No need in v4
+		// findShouldReplicaTxs(graph);
+
 //		System.out.println(String.format("Final loads: %s", Arrays.toString(loadPerPart)));
 	}
 	
@@ -73,7 +124,58 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		saturatedParts.clear();
 	}
 	
-	private void insertAccordingRemoteEdges(TGraph graph, TPartStoredProcedureTask task) {
+	/* No need in v4
+	private void findShouldReplicaTxs(TGraph graph) {
+		HashMap<PrimaryKey, HashSet<Integer>> hasRead = new HashMap<PrimaryKey, HashSet<Integer>>(); // key: pk, value: set of partIds => key pk has been read by some partIds
+		
+		List<TxNode> txNodes = graph.getTxNodes();
+		ArrayList<Integer[]> copyTxNodes = new ArrayList<Integer[]>();
+
+		for (int i = txNodes.size() - 1; i >= 0; i--) {
+			TxNode node = txNodes.get(i);
+			if (node.getTask().getProcedure().isDoingReplication()) continue;
+
+			for (PrimaryKey key : node.getTask().getWriteSet()) {
+				if (hotRecordKeys.contains(key) && hasRead.containsKey(key)) {
+					for (Integer partId : hasRead.get(key)) {
+						if (node.getPartId() != partId) {
+							copyTxNodes.add(new Integer[] {i, partId});
+						}
+					}
+				}
+			}
+			for (PrimaryKey key : node.getTask().getReadSet()) {
+				if (hotRecordKeys.contains(key)) {
+					if (!hasRead.containsKey(key)) {
+						hasRead.put(key, new HashSet<Integer>());
+					}
+					hasRead.get(key).add(node.getPartId());
+				}
+			}
+		}
+		
+		for (Integer[] copyTxNode : copyTxNodes) {
+			graph.copyTxNode(copyTxNode[0], copyTxNode[1]);
+		}
+	}
+	*/
+	
+	private void recalculateHotRecordKeys() {
+		hotRecordKeys.clear();
+		for (PrimaryKey key : readWriteCount.keySet()) {
+			if (isHotRecord(key)) {
+				hotRecordKeys.add(key);
+			}
+		}
+	}
+	
+	private void insertReplicationNodeAndEdges(TGraph graph, TPartStoredProcedureTask task) {
+		for (int partId = 0; partId < partMgr.getCurrentNumOfParts(); partId++) {
+			graph.insertReplicationNode(task, hotRecordKeys, partId);
+		}
+	}
+	
+	private void insertAccordingRemoteEdges(TGraph graph, TPartStoredProcedureTask task, HashSet<PrimaryKey> hotRecords) {
 		int bestPartId = 0;
 		int minRemoteEdgeCount = task.getReadSet().size();
 		
@@ -88,8 +190,8 @@ public class HermesNodeInserter implements BatchNodeInserter {
 				bestPartId = partId;
 			}
 		}
-		
-		graph.insertTxNode(task, bestPartId);
+
+		graph.insertTxNode(task, bestPartId, true, hotRecords);
 		
 		loadPerPart[bestPartId]++;
 	}
@@ -99,7 +201,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		
 		for (PrimaryKey key : task.getReadSet()) {
 			// Skip replicated records
-			if (partMgr.isFullyReplicated(key))
+			if (hotRecordKeys.contains(key))
 				continue;
 			
 			if (graph.getResourcePosition(key).getPartId() != partId) {
@@ -123,9 +225,11 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		// Find out the tx nodes on these parts
 		List<TxNode> nodesOnOverloadedParts = new ArrayList<TxNode>();
 		for (TxNode node : graph.getTxNodes()) { // this should be in the order of tx number
-			int homePartId = node.getPartId();
-			if (overloadedParts.contains(homePartId)) {
-				nodesOnOverloadedParts.add(node);
+			if (node.getAllowReroute()) {
+				int homePartId = node.getPartId();
+				if (overloadedParts.contains(homePartId)) {
+					nodesOnOverloadedParts.add(node);
+				}
 			}
 		}
 		
@@ -211,7 +315,7 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		
 		for (Edge readEdge : node.getReadEdges()) {
 			// Skip replicated records
-			if (partMgr.isFullyReplicated(readEdge.getResourceKey()))
+			if (hotRecordKeys.contains(readEdge.getResourceKey()))
 				continue;
 			
 			if (readEdge.getTarget().getPartId() != homePartId)
@@ -226,5 +330,15 @@ public class HermesNodeInserter implements BatchNodeInserter {
 		// Note: We do not consider write back edges because Hermes will make it local
 		
 		return count;
+	}
+	
+	private boolean isHotRecord(PrimaryKey key) {
+		if (totalNumberOfTxs <= 100) {
+			return false;
+		}
+		if (!readWriteCount.containsKey(key)) {
+			return false;
+		}
+		return (readWriteCount.get(key).get() / totalNumberOfTxs) >= IS_HOT_RECORD_THRESHOLD;
 	}
 }
