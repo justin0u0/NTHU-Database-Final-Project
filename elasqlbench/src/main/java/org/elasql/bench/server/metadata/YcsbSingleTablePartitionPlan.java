@@ -19,7 +19,7 @@ public class YcsbSingleTablePartitionPlan extends PartitionPlan {
 	public boolean isFullyReplicated(PrimaryKey key) {
 		return false;
 	}
-
+	
 	@Override
 	public int getPartition(PrimaryKey key) {
 		int ycsbId = getYcsbId(key);

@@ -58,7 +58,7 @@ public class Sinker {
 			
 			// Check if this node is the master node
 			boolean isHereMaster = (node.getPartId() == myId);
-			SunkPlan plan = new SunkPlan(sinkProcessId, isHereMaster);
+			SunkPlan plan = new SunkPlan(sinkProcessId, isHereMaster, node.getTask().getProcedure().isDoingReplication());
 
 			// Generate reading plans
 			generateReadingPlans(plan, node);

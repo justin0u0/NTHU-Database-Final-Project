@@ -1,6 +1,7 @@
 package org.elasql.schedule.tpart.graph;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -34,14 +35,33 @@ public class TGraph {
 			sinkNodes[partId] = new SinkNode(partId);
 		parMeta = Elasql.partitionMetaMgr();
 	}
+	
+	/**
+	 * 
+	 * @param task
+	 * @param replicatedKeys
+	 * @param assignedPartId the target server id to run on
+	 */
+	public void insertReplicationNode(TPartStoredProcedureTask task, HashSet<PrimaryKey> replicatedKeys, int assignedPartId) {
+		// Assign to current server, since everyone is responsible
+		// for doing replication work
+		TxNode node = new TxNode(task, assignedPartId, false);
+		txNodes.add(node);
+		
+		for (PrimaryKey res : replicatedKeys) {
+			Node targetNode = getResourcePosition(res);
+			node.addReadEdges(new Edge(targetNode, res));
+			targetNode.addWriteEdges(new Edge(node, res));
+		}
+	}
 
 	/**
 	 * Insert a new tx node into the t-graph.
 	 * 
 	 * @param node
 	 */
-	public void insertTxNode(TPartStoredProcedureTask task, int assignedPartId) {
-		TxNode node = new TxNode(task, assignedPartId);
+	public void insertTxNode(TPartStoredProcedureTask task, int assignedPartId, boolean allowReroute, HashSet<PrimaryKey> hotRecordKeys) {
+		TxNode node = new TxNode(task, assignedPartId, allowReroute);
 		txNodes.add(node);
 		
 		// Establish forward pushing edges
@@ -51,7 +71,7 @@ public class TGraph {
 
 				Node targetNode;
 
-				if (parMeta.isFullyReplicated(res))
+				if ((hotRecordKeys != null && hotRecordKeys.contains(res)) || parMeta.isFullyReplicated(res))
 					targetNode = sinkNodes[node.getPartId()];
 				else
 					targetNode = getResourcePosition(res);
@@ -68,6 +88,27 @@ public class TGraph {
 				resPos.put(res, node);
 		}
 	}
+	
+	/**
+	 * Copy txNodes.get(templateTxNodeIndex) to run on partId
+	 * @param templateTxNodeIndex
+	 * @param partId
+	 */
+	/* No need in v4
+	public void copyTxNode(int templateTxNodeIndex, int partId) {
+		TxNode templateNode = txNodes.get(templateTxNodeIndex);
+		TPartStoredProcedureTask task = templateNode.getTask();
+		TxNode node = new TxNode(task, partId, false);
+		txNodes.add(templateTxNodeIndex, node);
+		
+		for (Edge e : templateNode.getReadEdges()) {
+			node.addReadEdges(new Edge(e.getTarget(), e.getResourceKey()));
+		}
+		for (Edge e : templateNode.getReversedWriteEdges()) {
+			e.getTarget().addWriteEdges(new Edge(node, e.getResourceKey()));
+		}
+	}
+	*/
 
 	/**
 	 * Write back all modified data records to their original partitions.

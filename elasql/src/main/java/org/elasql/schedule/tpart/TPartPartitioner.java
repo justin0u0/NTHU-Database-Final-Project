@@ -1,6 +1,5 @@
 package org.elasql.schedule.tpart;
 
-import java.io.File;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -31,6 +30,7 @@ public class TPartPartitioner extends Task implements Scheduler {
 	private static Logger logger = Logger.getLogger(TPartPartitioner.class.getName());
 
 	private static final int NUM_TASK_PER_SINK;
+	private static final int SP_DOING_REPLICATION = -1234;
 
 	private TPartStoredProcedureFactory factory;
 	
@@ -120,8 +120,11 @@ public class TPartPartitioner extends Task implements Scheduler {
 	}
 	
 	private void processBatch(List<TPartStoredProcedureTask> batchedTasks) {
+		StoredProcedureCall call = new StoredProcedureCall(-1, -1, SP_DOING_REPLICATION, new Object[] {});
+		TPartStoredProcedureTask task = createStoredProcedureTask(call);
+		
 		// Insert the batch of tasks
-		inserter.insertBatch(graph, batchedTasks);
+		inserter.insertBatch(graph, batchedTasks, task);
 		
 		// Debug
 //		printGraphStatistics();
@@ -153,7 +156,9 @@ public class TPartPartitioner extends Task implements Scheduler {
 			return new TPartStoredProcedureTask(call.getClientId(), call.getConnectionId(), call.getTxNum(), null);
 		} else {
 			TPartStoredProcedure<?> sp = factory.getStoredProcedure(call.getPid(), call.getTxNum());
-			sp.prepare(call.getPars());
+			if (!sp.isDoingReplication()) {
+				sp.prepare(call.getPars());
+			}
 
 			if (!sp.isReadOnly())
 				DdRecoveryMgr.logRequest(call);
